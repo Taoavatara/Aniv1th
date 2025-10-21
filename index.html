@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tao-Ifa</title>
+<style>
+  :root{--bg:#0f1724;--card:#0b1220;--accent:#ff6b8a}
+  html,body{height:100%;margin:0;font-family:Inter, system-ui, sans-serif;background:linear-gradient(180deg,#071227 0%, #071a2b 100%);color:#e6eef8}
+  .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px}
+  .card{width:980px;max-width:96%;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));border-radius:18px;box-shadow:0 12px 40px rgba(2,6,23,0.6);overflow:hidden;display:grid;grid-template-columns:1fr 420px}
+  .left{padding:36px 40px;position:relative;display:flex;flex-direction:column;justify-content:center}
+  .title{font-size:20px;margin:0 0 8px;color:var(--accent);letter-spacing:0.4px}
+  .headline{font-size:24px;margin:0 0 12px;min-height:40px}
+  .message{line-height:1.6;margin-bottom:18px;min-height:48px;opacity:0.9}
+  .btns{display:flex;gap:12px;flex-wrap:wrap}
+  .btn{background:var(--accent);color:white;padding:10px 14px;border-radius:12px;border:0;cursor:pointer;font-weight:600}
+  .play{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+  .right{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:22px;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center}
+  .photo{width:100%;height:320px;border-radius:12px;background-size:cover;background-position:center;box-shadow:0 6px 22px rgba(2,6,23,0.6);cursor:pointer;transition:opacity 0.5s ease}
+  .small{display:flex;gap:10px;width:100%}
+  .small div{flex:1;height:72px;border-radius:10px;background-size:cover;background-position:center;cursor:pointer}
+  .hearts{position:absolute;right:-40px;top:10px;pointer-events:none}
+  .heart{position:absolute;width:18px;height:18px;border-radius:50%;background:var(--accent);opacity:0.9;transform:translateY(0);animation:float 4s infinite}
+  @keyframes float{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-260px) scale(0.6);opacity:0}}
+  .confetti{position:fixed;inset:0;pointer-events:none}
+  .credit{font-size:12px;opacity:0.8;margin-top:8px}
+  @media (max-width:880px){.card{grid-template-columns:1fr;}.right{order:-1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="left">
+      <div class="hearts" id="hearts"></div>
+      <h3 class="title">Buat Kamu, Pacarnya Tao</h3>
+      <h1 class="headline" id="headline">Happy Anniversary Yang Pertama, Babyy 💖</h1>
+      <p class="message" id="message">Hari ini ku mau ingetin betapa berartinya kamu untukku. Thank you sayangg.</p>
+      <div class="btns">
+        <button class="btn" id="revealBtn">Buka Hadiah</button>
+        <button class="btn play" id="playVoice">▶️ Putar/Pause Suara</button>
+      </div>
+      <div class="credit">22 Oktober 2024 - 22 Oktober 2025</div>
+    </div>
+    <div class="right">
+      <div class="photo" id="photo" style="background-image:url('photo1.jpg');opacity:0.0"></div>
+      <div class="small">
+        <div id="thumb1" style="background-image:url('photo1.jpg')"></div>
+        <div id="thumb2" style="background-image:url('photo2.jpg')"></div>
+        <div id="thumb3" style="background-image:url('photo3.jpg')"></div>
+        <div id="thumb4" style="background-image:url('photo4.jpg')"></div>
+      </div>
+      <div style="width:100%;display:flex;gap:8px">
+        <button class="btn play" id="toggleConfetti">🎉 Confetti</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<canvas id="confettiCanvas" class="confetti"></canvas>
+
+<script>
+const slides=[
+  {photo:'photo1.jpg', headline:'Happy anniversary sayangg 💖', message:'Maaf sayangg kalo jelek.. aku cuma mau kasih hadiah dari apa yang aku buat.. maaf belom bisa jadi apa yang kamu mau sayanggg, aku sayangg kamuu.', voice:'voice1.mp3'},
+  {photo:'photo2.jpg', headline:'Tao sayangg ifaaa', message:'Hadiah ini mungkin nda seberapa bagus. Tapi aku pingin ini disimpan sebagai kenangan yaa sayangg. Maaf kalo cuma kasih ini belum bisa kasih kado kaya yang lain.', voice:'voice2.mp3'},
+  {photo:'photo3.jpg', headline:'Setiap hari bersamamu itu hadiah terindah.', message:'Sayangg, sayang akuu ndakk?', voice:'voice3.mp3'},
+  {photo:'photo4.jpg', headline:'Maaf', message:'Maaf yaa sayangg kalo aku suka omong kotor, suka ndak taat sama kamu.. maaf yaa sayanggg jangan tinggalin aku yaa pliss babyyy.. HAPPY ANNIVERSARY YANG PERTAMA SAYANGG!! ILOVE YOUU, BABYYY', voice:'voice4.mp3'}
+];
+
+const heartsEl=document.getElementById('hearts');
+const revealBtn=document.getElementById('revealBtn');
+const playVoiceBtn=document.getElementById('playVoice');
+const photoEl=document.getElementById('photo');
+const headlineEl=document.getElementById('headline');
+const messageEl=document.getElementById('message');
+const confettiCanvas=document.getElementById('confettiCanvas');
+const ctx=confettiCanvas.getContext('2d');
+const voice=new Audio(); voice.preload='auto';
+let current=0, confettiPieces=[], confettiRunning=false;
+
+// HEARTS
+function spawnHeart(){
+  const h=document.createElement('div'); h.className='heart';
+  const size=Math.random()*18+8;
+  h.style.width=size+'px'; h.style.height=size+'px';
+  h.style.right=(Math.random()*140)+'px'; h.style.top=(Math.random()*40)+'px';
+  h.style.background='linear-gradient(180deg, rgba(255,107,138,0.95), rgba(255,182,193,0.9))';
+  h.style.animationDuration=(3+Math.random()*3)+'s';
+  heartsEl.appendChild(h);
+  setTimeout(()=>h.remove(),5000);
+}
+setInterval(spawnHeart,900);
+
+// CONFETTI
+function resizeCanvas(){confettiCanvas.width=innerWidth; confettiCanvas.height=innerHeight;}
+window.addEventListener('resize',resizeCanvas); resizeCanvas();
+function startConfetti(){
+  confettiPieces=[];
+  for(let i=0;i<90;i++){
+    confettiPieces.push({x:Math.random()*confettiCanvas.width,y:Math.random()*-confettiCanvas.height,vx:(Math.random()-0.5)*2,vy:2+Math.random()*4,r:4+Math.random()*8,rot:Math.random()*360,velRot:(Math.random()-0.5)*10});
+  }
+  if(!confettiRunning){confettiRunning=true; requestAnimationFrame(confettiLoop);}
+  setTimeout(()=>{confettiPieces=[];},2000);
+}
+function confettiLoop(){
+  ctx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
+  for(const p of confettiPieces){
+    p.x+=p.vx; p.y+=p.vy; p.rot+=p.velRot;
+    ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180);
+    ctx.fillStyle='rgba(255,107,138,0.9)'; ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r);
+    ctx.restore();
+  }
+  if(confettiPieces.length) requestAnimationFrame(confettiLoop);
+  else confettiRunning=false;
+}
+document.getElementById('toggleConfetti').addEventListener('click',()=>startConfetti());
+
+// SHOW SLIDE (voice hanya set, tidak auto-play)
+function showSlide(i){
+  current=i%slides.length;
+  localStorage.setItem('lastSlide', current); // simpan state
+  const s=slides[current];
+  photoEl.style.opacity=0;
+  setTimeout(()=>{
+    photoEl.style.backgroundImage=`url('${s.photo}')`;
+    for(let t=0;t<slides.length;t++) document.getElementById(`thumb${t+1}`).style.backgroundImage=`url('${slides[t].photo}')`;
+    headlineEl.textContent=s.headline;
+    messageEl.textContent=s.message||'';
+    voice.src=s.voice; voice.currentTime=0;
+    photoEl.style.opacity=1;
+  },250);
+  startConfetti();
+}
+
+// BUTTONS
+revealBtn.addEventListener('click',()=>{showSlide(current);revealBtn.style.display='none';});
+playVoiceBtn.addEventListener('click',()=>{
+  if(!voice.src) return;
+  if(voice.paused){voice.play(); playVoiceBtn.textContent='⏸️ Pause Voice';}
+  else{voice.pause(); playVoiceBtn.textContent='▶️ Putar/Pause Suara';}
+});
+
+// CLICK PHOTO & LEFT AREA
+photoEl.addEventListener('click',()=>showSlide((current+1)%slides.length));
+document.querySelector('.left').addEventListener('click',(e)=>{if(e.target.tagName.toLowerCase()!=='button') showSlide((current+1)%slides.length);});
+
+// THUMBNAILS
+for(let i=0;i<slides.length;i++){
+  const thumb=document.getElementById(`thumb${i+1}`);
+  if(thumb){thumb.addEventListener('click',()=>showSlide(i));}
+}
+
+// INITIAL LOAD
+window.addEventListener('load',()=>{
+  const saved = localStorage.getItem('lastSlide');
+  showSlide(saved !== null ? parseInt(saved) : 0);
+});
+</script>
+</body>
+</html>
